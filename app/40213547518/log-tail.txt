@@ -1,0 +1,262 @@
+===== logs/build.log (last 80 lines) =====
+36165 INFO: Bootloader D:\a\ocr2\ocr2\.venv\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+36165 INFO: checking EXE
+36165 INFO: Building EXE because EXE-00.toc is non existent
+36165 INFO: Building EXE from EXE-00.toc
+36165 INFO: Copying bootloader EXE to D:\a\ocr2\ocr2\build\pyi\matnyab\MatnYab.exe
+36180 INFO: Copying icon to EXE
+36180 INFO: Copying version information to EXE
+36180 INFO: Copying 0 resources to EXE
+36180 INFO: Embedding manifest in EXE
+36180 INFO: Appending PKG archive to EXE
+36196 INFO: Fixing EXE headers
+36258 INFO: Building EXE from EXE-00.toc completed successfully.
+36258 INFO: checking PKG
+36274 INFO: Building PKG because PKG-01.toc is non existent
+36274 INFO: Building PKG (CArchive) matnyab-cli.pkg
+36274 INFO: Building PKG (CArchive) matnyab-cli.pkg completed successfully.
+36290 INFO: Bootloader D:\a\ocr2\ocr2\.venv\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\run.exe
+36290 INFO: checking EXE
+36290 INFO: Building EXE because EXE-01.toc is non existent
+36290 INFO: Building EXE from EXE-01.toc
+36290 INFO: Copying bootloader EXE to D:\a\ocr2\ocr2\build\pyi\matnyab\matnyab-cli.exe
+36290 INFO: Copying icon to EXE
+36290 INFO: Copying version information to EXE
+36290 INFO: Copying 0 resources to EXE
+36290 INFO: Embedding manifest in EXE
+36290 INFO: Appending PKG archive to EXE
+36290 INFO: Fixing EXE headers
+36368 INFO: Building EXE from EXE-01.toc completed successfully.
+36368 INFO: checking COLLECT
+36368 INFO: Building COLLECT because COLLECT-00.toc is non existent
+36368 INFO: Building COLLECT COLLECT-00.toc
+36744 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+36744 INFO: Build complete! The results are available in: D:\a\ocr2\ocr2\dist
+
+=== size report ===
+Bundle: 314.4 MB in 323 files (target <= 120 MB)
+
+Top-level folders and files by size (MB):
+    93.1  tesseract
+    42.6  PySide6
+    31.6  libicudt78.dll
+    25.2  libstdc++-6.dll
+    20.2  numpy.libs
+    10.7  PIL
+     6.6  lxml
+     6.6  python312.dll
+     6.1  numpy
+     5.4  rapidfuzz
+       5  libcrypto-3.dll
+     3.3  libtesseract-5.dll
+     3.2  model
+     2.7  libleptonica-6.dll
+     2.1  libunistring-5.dll
+WARNING: bundle is 314.4 MB, above the 120 MB target
+
+=== portable zip ===
+D:\a\ocr2\ocr2\dist\MatnYab-0.1.0-portable.zip (131.7 MB)
+
+=== inno setup ===
+
+
+Preprocessing
+D:\a\ocr2\ocr2\dist\MatnYab-Setup-0.1.0.exe (84.9 MB)
+
+================ MatnYab build summary ================
+Result            : OK
+Version           : 0.1.0
+Tesseract         : tesseract v5.5.3.20260724
+Bundle            : 314.4 MB, 323 files
+Portable zip      : D:\a\ocr2\ocr2\dist\MatnYab-0.1.0-portable.zip (131.7 MB)
+Installer         : D:\a\ocr2\ocr2\dist\MatnYab-Setup-0.1.0.exe (84.9 MB, english+farsi)
+Warning           : bundle is 314.4 MB, above the 120 MB target
+Stage venv        : 6.4 s
+Stage pip install : 23.8 s
+Stage tesseract   : 0.2 s
+Stage pyinstaller : 37 s
+Stage size report : 0.1 s
+Stage portable zip: 6.6 s
+Stage inno setup  : 57.1 s
+=======================================================
+===== logs/install.log (last 80 lines) =====
+2026-10-25 16:56:12.976   Dest filename: D:\a\_temp\matnyab-installed\_internal\tesseract\libwebp-7.dll
+2026-10-25 16:56:12.976   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:12.976   Installing the file.
+2026-10-25 16:56:12.991   Successfully installed the file.
+2026-10-25 16:56:12.991   -- File entry --
+2026-10-25 16:56:12.991   Dest filename: D:\a\_temp\matnyab-installed\_internal\tesseract\libwebpmux-3.dll
+2026-10-25 16:56:12.991   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:12.991   Installing the file.
+2026-10-25 16:56:13.007   Successfully installed the file.
+2026-10-25 16:56:13.007   -- File entry --
+2026-10-25 16:56:13.007   Dest filename: D:\a\_temp\matnyab-installed\_internal\tesseract\libwinpthread-1.dll
+2026-10-25 16:56:13.007   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.007   Installing the file.
+2026-10-25 16:56:13.007   Successfully installed the file.
+2026-10-25 16:56:13.007   -- File entry --
+2026-10-25 16:56:13.007   Dest filename: D:\a\_temp\matnyab-installed\_internal\tesseract\libzstd.dll
+2026-10-25 16:56:13.007   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.007   Installing the file.
+2026-10-25 16:56:13.038   Successfully installed the file.
+2026-10-25 16:56:13.038   -- File entry --
+2026-10-25 16:56:13.038   Dest filename: D:\a\_temp\matnyab-installed\_internal\tesseract\tesseract.exe
+2026-10-25 16:56:13.038   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.038   Installing the file.
+2026-10-25 16:56:13.085   Successfully installed the file.
+2026-10-25 16:56:13.085   -- File entry --
+2026-10-25 16:56:13.085   Dest filename: D:\a\_temp\matnyab-installed\_internal\tesseract\zlib1.dll
+2026-10-25 16:56:13.085   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.085   Installing the file.
+2026-10-25 16:56:13.085   Successfully installed the file.
+2026-10-25 16:56:13.085   -- File entry --
+2026-10-25 16:56:13.085   Dest filename: D:\a\_temp\matnyab-installed\_internal\wcwidth\py.typed
+2026-10-25 16:56:13.085   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.085   Installing the file.
+2026-10-25 16:56:13.085   Creating directory: D:\a\_temp\matnyab-installed\_internal\wcwidth
+2026-10-25 16:56:13.085   Successfully installed the file.
+2026-10-25 16:56:13.085   -- File entry --
+2026-10-25 16:56:13.085   Dest filename: D:\a\_temp\matnyab-installed\_internal\wcwidth\_wcwidth_c.pyd
+2026-10-25 16:56:13.085   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.085   Installing the file.
+2026-10-25 16:56:13.101   Successfully installed the file.
+2026-10-25 16:56:13.101   -- File entry --
+2026-10-25 16:56:13.101   Dest filename: D:\a\_temp\matnyab-installed\_internal\wcwidth\_wcwidth_c.pyi
+2026-10-25 16:56:13.101   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.101   Installing the file.
+2026-10-25 16:56:13.116   Successfully installed the file.
+2026-10-25 16:56:13.116   -- File entry --
+2026-10-25 16:56:13.116   Dest filename: D:\a\_temp\matnyab-installed\_internal\wordfreq\py.typed
+2026-10-25 16:56:13.116   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.116   Installing the file.
+2026-10-25 16:56:13.116   Creating directory: D:\a\_temp\matnyab-installed\_internal\wordfreq
+2026-10-25 16:56:13.116   Successfully installed the file.
+2026-10-25 16:56:13.116   -- File entry --
+2026-10-25 16:56:13.116   Dest filename: D:\a\_temp\matnyab-installed\_internal\wordfreq\data\large_en.msgpack.gz
+2026-10-25 16:56:13.116   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.116   Installing the file.
+2026-10-25 16:56:13.116   Creating directory: D:\a\_temp\matnyab-installed\_internal\wordfreq\data
+2026-10-25 16:56:13.132   Successfully installed the file.
+2026-10-25 16:56:13.132   -- File entry --
+2026-10-25 16:56:13.132   Dest filename: D:\a\_temp\matnyab-installed\_internal\wordfreq\data\small_en.msgpack.gz
+2026-10-25 16:56:13.132   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.132   Installing the file.
+2026-10-25 16:56:13.132   Successfully installed the file.
+2026-10-25 16:56:13.132   -- File entry --
+2026-10-25 16:56:13.132   Dest filename: D:\a\_temp\matnyab-installed\_internal\wordfreq\data\small_fa.msgpack.gz
+2026-10-25 16:56:13.132   Time stamp of our file: 2026-10-25 16:54:44.000
+2026-10-25 16:56:13.132   Installing the file.
+2026-10-25 16:56:13.132   Successfully installed the file.
+2026-10-25 16:56:13.132   -- Icon entry --
+2026-10-25 16:56:13.132   Dest filename: C:\Users\runneradmin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\MatnYab.lnk
+2026-10-25 16:56:13.132   Creating the icon.
+2026-10-25 16:56:13.163   Successfully created the icon.
+2026-10-25 16:56:13.163   Saving uninstall information.
+2026-10-25 16:56:13.163   Creating new uninstall key: HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{D8D1D334-3C8A-411E-9B5D-99D1870994A0}_is1
+2026-10-25 16:56:13.163   Writing uninstall key values.
+2026-10-25 16:56:13.163   Detected previous administrative 64-bit install? No
+2026-10-25 16:56:13.163   Detected previous administrative 32-bit install? No
+2026-10-25 16:56:13.163   Installation process succeeded.
+2026-10-25 16:56:13.163   Need to restart Windows? No
+2026-10-25 16:56:13.163   Deinitializing Setup.
+2026-10-25 16:56:13.179   Log closed.
+===== logs/uninstall.log (last 80 lines) =====
+2026-10-25 16:56:25.299   Deleting file: D:\a\_temp\matnyab-installed\_internal\libiconv-2.dll
+2026-10-25 16:56:25.299   Deleting file: D:\a\_temp\matnyab-installed\_internal\libharfbuzz-0.dll
+2026-10-25 16:56:25.299   Deleting file: D:\a\_temp\matnyab-installed\_internal\libgraphite2.dll
+2026-10-25 16:56:25.299   Deleting file: D:\a\_temp\matnyab-installed\_internal\libgobject-2.0-0.dll
+2026-10-25 16:56:25.299   Deleting file: D:\a\_temp\matnyab-installed\_internal\libgmodule-2.0-0.dll
+2026-10-25 16:56:25.299   Deleting file: D:\a\_temp\matnyab-installed\_internal\libglib-2.0-0.dll
+2026-10-25 16:56:25.299   Deleting file: D:\a\_temp\matnyab-installed\_internal\libgio-2.0-0.dll
+2026-10-25 16:56:25.300   Deleting file: D:\a\_temp\matnyab-installed\_internal\libgif-7.dll
+2026-10-25 16:56:25.300   Deleting file: D:\a\_temp\matnyab-installed\_internal\libgcc_s_seh-1.dll
+2026-10-25 16:56:25.300   Deleting file: D:\a\_temp\matnyab-installed\_internal\libfribidi-0.dll
+2026-10-25 16:56:25.300   Deleting file: D:\a\_temp\matnyab-installed\_internal\libfreetype-6.dll
+2026-10-25 16:56:25.300   Deleting file: D:\a\_temp\matnyab-installed\_internal\libfontconfig-1.dll
+2026-10-25 16:56:25.300   Deleting file: D:\a\_temp\matnyab-installed\_internal\libffi-8.dll
+2026-10-25 16:56:25.300   Deleting file: D:\a\_temp\matnyab-installed\_internal\libexpat-1.dll
+2026-10-25 16:56:25.300   Deleting file: D:\a\_temp\matnyab-installed\_internal\libdeflate.dll
+2026-10-25 16:56:25.300   Deleting file: D:\a\_temp\matnyab-installed\_internal\libdatrie-1.dll
+2026-10-25 16:56:25.300   Deleting file: D:\a\_temp\matnyab-installed\_internal\libcurl-4.dll
+2026-10-25 16:56:25.301   Deleting file: D:\a\_temp\matnyab-installed\_internal\libcrypto-3.dll
+2026-10-25 16:56:25.301   Deleting file: D:\a\_temp\matnyab-installed\_internal\libcairo-2.dll
+2026-10-25 16:56:25.301   Deleting file: D:\a\_temp\matnyab-installed\_internal\libbz2-1.dll
+2026-10-25 16:56:25.301   Deleting file: D:\a\_temp\matnyab-installed\_internal\libbrotlidec.dll
+2026-10-25 16:56:25.301   Deleting file: D:\a\_temp\matnyab-installed\_internal\libbrotlicommon.dll
+2026-10-25 16:56:25.301   Deleting file: D:\a\_temp\matnyab-installed\_internal\libb2-1.dll
+2026-10-25 16:56:25.301   Deleting file: D:\a\_temp\matnyab-installed\_internal\libarchive-13.dll
+2026-10-25 16:56:25.301   Deleting file: D:\a\_temp\matnyab-installed\_internal\base_library.zip
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-utility-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-time-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-string-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-stdio-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-runtime-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-process-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-private-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-math-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-locale-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-heap-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-filesystem-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-environment-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-convert-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-crt-conio-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-util-l1-1-0.dll
+2026-10-25 16:56:25.302   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-timezone-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-sysinfo-l1-2-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-sysinfo-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-synch-l1-2-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-synch-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-string-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-rtlsupport-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-profile-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-processthreads-l1-1-1.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-processthreads-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-processenvironment-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-namedpipe-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-memory-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-localization-l1-2-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-libraryloader-l1-1-0.dll
+2026-10-25 16:56:25.303   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-kernel32-legacy-l1-1-1.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-interlocked-l1-1-0.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-heap-l1-1-0.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-handle-l1-1-0.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-file-l2-1-0.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-file-l1-2-0.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-file-l1-1-0.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-fibers-l1-1-1.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-fibers-l1-1-0.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-errorhandling-l1-1-0.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-debug-l1-1-0.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-datetime-l1-1-0.dll
+2026-10-25 16:56:25.304   Deleting file: D:\a\_temp\matnyab-installed\_internal\api-ms-win-core-console-l1-1-0.dll
+2026-10-25 16:56:25.305   Deleting directory: D:\a\_temp\matnyab-installed\_internal
+2026-10-25 16:56:25.305   Deleting file: D:\a\_temp\matnyab-installed\MatnYab.exe
+2026-10-25 16:56:25.306   Deleting file: D:\a\_temp\matnyab-installed\matnyab-cli.exe
+2026-10-25 16:56:25.306   Deleting directory: D:\a\_temp\matnyab-installed
+2026-10-25 16:56:25.306   Failed to delete directory (145). Will retry later.
+2026-10-25 16:56:25.306   Deleting Uninstall data files.
+2026-10-25 16:56:25.306   Creating "_unins-done.tmp" file.
+2026-10-25 16:56:25.812   Deleting directory: D:\a\_temp\matnyab-installed
+2026-10-25 16:56:25.817   Uninstallation process succeeded.
+2026-10-25 16:56:25.817   Removed all? Yes
+2026-10-25 16:56:25.817   Need to restart Windows? No
+2026-10-25 16:56:25.819   Log closed.
+===== size-report.txt =====
+Bundle: 314.4 MB in 323 files (target <= 120 MB)
+
+Top-level folders and files by size (MB):
+    93.1  tesseract
+    42.6  PySide6
+    31.6  libicudt78.dll
+    25.2  libstdc++-6.dll
+    20.2  numpy.libs
+    10.7  PIL
+     6.6  lxml
+     6.6  python312.dll
+     6.1  numpy
+     5.4  rapidfuzz
+       5  libcrypto-3.dll
+     3.3  libtesseract-5.dll
+     3.2  model
+     2.7  libleptonica-6.dll
+     2.1  libunistring-5.dll
