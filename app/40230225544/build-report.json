@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "run_id": "40230225544",
+  "run_number": "5",
+  "sha": "5ec7a3973cf83c0ed8292e94a72af62f0319cb3f",
+  "ref": "refs/heads/main",
+  "version": "0.1.0",
+  "outcomes": {
+    "tools": "success",
+    "build": "success",
+    "selftest": "success",
+    "smoke": "success",
+    "installer": "success"
+  },
+  "sizes_mb": {
+    "bundle": 314.4,
+    "portable_zip": 131.7,
+    "installer": 84.9
+  },
+  "bundle_files": 323,
+  "tesseract_version": "tesseract v5.5.3.20260724",
+  "installer_language": "english+farsi",
+  "warnings": "bundle is 314.4 MB, above the 120 MB target",
+  "build_error": "",
+  "selftest": {
+    "ok": true,
+    "word_accuracy": 0.9940476190476191,
+    "mode_used": "raw",
+    "elapsed_s": 7.077015399999993,
+    "tesseract": "tesseract v5.5.3.20260724"
+  },
+  "selftest_installed": {
+    "ok": true,
+    "word_accuracy": 0.9940476190476191,
+    "mode_used": "raw",
+    "elapsed_s": 7.142694799999958,
+    "tesseract": "tesseract v5.5.3.20260724"
+  },
+  "smoke_stdout": {
+    "ok": true,
+    "window": true,
+    "words": 316
+  },
+  "timings_seconds": {
+    "tools": 21.9,
+    "build_total": 145.9,
+    "build_stages": {
+      "venv": 6.3,
+      "pip install": 29.3,
+      "tesseract": 0.2,
+      "pyinstaller": 42.6,
+      "size report": 0.1,
+      "portable zip": 6.6,
+      "inno setup": 60.5
+    },
+    "selftest": 7.4,
+    "smoke": 7.8,
+    "install_cycle": 18.2,
+    "job_so_far": 204
+  }
+}
