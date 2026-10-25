@@ -1,0 +1,18 @@
+# Folder or file names that are never snapshotted, diffed or packed (one per line).
+# Build output and caches belong here. Edit freely; keep the zip you upload small too.
+.git
+node_modules
+target
+__pycache__
+.venv
+.vs
+.idea
+build
+dist
+obj
+Intermediate
+Saved
+DerivedDataCache
+Binaries
+.DS_Store
+Thumbs.db

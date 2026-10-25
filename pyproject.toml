@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "matnyab"
+version = "0.1.0"
+description = "MatnYab: offline Persian image-to-text desktop app"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "PySide6-Essentials",
+    "Pillow",
+    "numpy",
+    "rapidfuzz",
+    "wordfreq",
+    "python-docx",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+build = ["pyinstaller"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--import-mode=importlib"
+markers = [
+    "slow: slow tests (real OCR on the bundled samples)",
+    "ui: tests that need a Qt application (run offscreen)",
+]

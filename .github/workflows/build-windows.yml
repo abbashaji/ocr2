@@ -1,0 +1,292 @@
+name: build-windows
+
+# Builds the Windows bundle (PyInstaller), the Inno Setup installer and the
+# portable zip, smoke-tests all of it and publishes a report to the `results`
+# branch under app/<run_id>/. No secrets: only the built-in GITHUB_TOKEN.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["app/**"]
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Tesseract
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - name: Install the project
+        # pyyaml is only used by tests/packaging to parse this workflow; it is not a project dependency.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev] pyyaml
+      - name: Run the tests
+        run: python -m pytest -q
+
+  windows:
+    needs: test
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Prepare report folders
+        run: |
+          New-Item -ItemType Directory -Force -Path report, logs | Out-Null
+          "$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" | Set-Content report/job-start.txt
+
+      - name: Install Tesseract and Inno Setup (chocolatey)
+        id: tools
+        run: |
+          function Install-Choco([string]$Name) {
+            for ($i = 1; $i -le 4; $i++) {
+              choco install $Name -y --no-progress
+              if ($LASTEXITCODE -eq 0) { return }
+              Write-Host "choco install $Name failed (attempt $i), retrying"
+              Start-Sleep -Seconds (10 * $i)
+            }
+            throw "choco install $Name failed after 4 attempts"
+          }
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          Install-Choco tesseract
+          Install-Choco innosetup
+          $sw.Stop()
+          $sw.Elapsed.TotalSeconds | Set-Content report/t-tools.txt
+
+      - name: Build bundle, portable zip and installer
+        id: build
+        run: |
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          & ./packaging/build_windows.ps1 *>&1 | Tee-Object -FilePath logs/build.log
+          $code = $LASTEXITCODE
+          $sw.Stop()
+          $sw.Elapsed.TotalSeconds | Set-Content report/t-build.txt
+          if ($code -ne 0) { throw "build_windows.ps1 failed with exit code $code" }
+
+      # - name: Sign the executables (DISABLED: no code-signing certificate is available)
+      #   if: ${{ false }}
+      #   run: |
+      #     # Needs a certificate in a secret (for example base64 PFX + password), then:
+      #     # signtool sign /f cert.pfx /p $env:CERT_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
+      #     #   dist\MatnYab\MatnYab.exe dist\MatnYab\matnyab-cli.exe
+      #     # Sign BEFORE the installer is compiled (move this step above the build, or build with -SkipInstaller
+      #     # and compile the installer after signing), then sign the installer too.
+
+      - name: Selftest of the frozen CLI
+        id: selftest
+        run: |
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $out = & ./dist/MatnYab/matnyab-cli.exe selftest
+          $code = $LASTEXITCODE
+          $sw.Stop()
+          $sw.Elapsed.TotalSeconds | Set-Content report/t-selftest.txt
+          $out | Set-Content -Encoding UTF8 report/selftest.json
+          $out | ForEach-Object { Write-Host $_ }
+          if ($code -ne 0) { throw "frozen selftest exited with $code" }
+          $json = ($out | Select-Object -Last 1) | ConvertFrom-Json
+          if ($json.PSObject.Properties.Name -contains 'ok' -and -not $json.ok) { throw "frozen selftest reported ok=false" }
+
+      - name: GUI smoke test (offscreen)
+        id: smoke
+        run: |
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          # Absolute paths: Start-Process resolves relative ones against the process directory, not $PWD.
+          $exe = (Resolve-Path dist/MatnYab/MatnYab.exe).Path
+          $p = Start-Process -FilePath $exe -ArgumentList "--smoke" -PassThru -NoNewWindow `
+                 -RedirectStandardOutput "$PWD\report\smoke.out.txt" -RedirectStandardError "$PWD\report\smoke.err.txt"
+          if (-not $p.WaitForExit(180000)) { $p.Kill(); throw "MatnYab.exe --smoke timed out after 180 s" }
+          $p.WaitForExit()
+          $sw.Stop()
+          $sw.Elapsed.TotalSeconds | Set-Content report/t-smoke.txt
+          $text = (Get-Content report/smoke.out.txt -Raw -ErrorAction SilentlyContinue)
+          Write-Host "stdout: $text"
+          Write-Host "stderr: $(Get-Content report/smoke.err.txt -Raw -ErrorAction SilentlyContinue)"
+          if ($p.ExitCode -ne 0) { throw "MatnYab.exe --smoke exited with $($p.ExitCode)" }
+          if ([string]::IsNullOrWhiteSpace($text)) {
+            # A windowed exe may have no usable stdout; the exit code is then the only signal.
+            Write-Host "::warning::MatnYab.exe --smoke printed nothing; judged by exit code 0 only"
+          } else {
+            $json = ($text.Trim() -split "`n" | Select-Object -Last 1) | ConvertFrom-Json
+            if (-not $json.ok) { throw "smoke reported ok=false" }
+          }
+
+      - name: Silent install, installed selftest, silent uninstall
+        id: installer
+        run: |
+          if ((Get-Content src/matnyab/__init__.py -Raw) -notmatch '__version__\s*=\s*"([^"]+)"') { throw "__version__ not found" }
+          $version = $Matches[1]
+          $setup = (Resolve-Path "dist/MatnYab-Setup-$version.exe").Path
+          $dir = Join-Path $env:RUNNER_TEMP "matnyab-installed"
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+
+          $p = Start-Process -FilePath $setup -PassThru -Wait -ArgumentList @(
+                 "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$dir", "/LOG=$PWD\logs\install.log")
+          if ($p.ExitCode -ne 0) { throw "installer exited with $($p.ExitCode)" }
+          foreach ($rel in "MatnYab.exe", "matnyab-cli.exe", "unins000.exe") {
+            if (-not (Test-Path (Join-Path $dir $rel))) { throw "installed folder lacks $rel" }
+          }
+
+          $out = & (Join-Path $dir "matnyab-cli.exe") selftest
+          $code = $LASTEXITCODE
+          $out | Set-Content -Encoding UTF8 report/selftest-installed.json
+          $out | ForEach-Object { Write-Host $_ }
+          if ($code -ne 0) { throw "installed selftest exited with $code" }
+
+          $u = Start-Process -FilePath (Join-Path $dir "unins000.exe") -PassThru -Wait -ArgumentList @(
+                 "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LOG=$PWD\logs\uninstall.log")
+          if ($u.ExitCode -ne 0) { throw "uninstaller exited with $($u.ExitCode)" }
+          # unins000.exe relaunches a temporary copy of itself and returns early: wait for the folder to go.
+          $deadline = (Get-Date).AddSeconds(90)
+          while ((Test-Path (Join-Path $dir "MatnYab.exe")) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
+          if (Test-Path (Join-Path $dir "MatnYab.exe")) { throw "MatnYab.exe still present 90 s after uninstall" }
+          $sw.Stop()
+          $sw.Elapsed.TotalSeconds | Set-Content report/t-installer.txt
+
+      - name: Write build-report.json
+        if: always()
+        env:
+          OUTCOME_TOOLS: ${{ steps.tools.outcome }}
+          OUTCOME_BUILD: ${{ steps.build.outcome }}
+          OUTCOME_SELFTEST: ${{ steps.selftest.outcome }}
+          OUTCOME_SMOKE: ${{ steps.smoke.outcome }}
+          OUTCOME_INSTALLER: ${{ steps.installer.outcome }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_NUMBER: ${{ github.run_number }}
+          GIT_SHA: ${{ github.sha }}
+          GIT_REF: ${{ github.ref }}
+        run: |
+          New-Item -ItemType Directory -Force -Path report, logs | Out-Null
+          function Read-Json([string]$Path) {
+            if (-not (Test-Path $Path)) { return $null }
+            $raw = (Get-Content $Path -Raw -ErrorAction SilentlyContinue)
+            if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+            try { return ($raw.Trim() -split "`n" | Select-Object -Last 1 | ConvertFrom-Json) } catch { return $raw.Trim() }
+          }
+          function Read-Seconds([string]$Name) {
+            $f = "report/t-$Name.txt"
+            if (Test-Path $f) { return [math]::Round([double](Get-Content $f -Raw), 1) } else { return $null }
+          }
+          $summary = $null
+          if (Test-Path dist/build-summary.json) { $summary = Get-Content dist/build-summary.json -Raw | ConvertFrom-Json }
+          $outcomes = [ordered]@{
+            tools = $env:OUTCOME_TOOLS; build = $env:OUTCOME_BUILD; selftest = $env:OUTCOME_SELFTEST
+            smoke = $env:OUTCOME_SMOKE; installer = $env:OUTCOME_INSTALLER
+          }
+          $allOk = -not ($outcomes.Values | Where-Object { $_ -ne 'success' })
+          $jobStart = if (Test-Path report/job-start.txt) { [long](Get-Content report/job-start.txt -Raw) } else { 0 }
+          $report = [ordered]@{
+            ok = [bool]$allOk
+            run_id = $env:RUN_ID
+            run_number = $env:RUN_NUMBER
+            sha = $env:GIT_SHA
+            ref = $env:GIT_REF
+            version = if ($summary) { $summary.version } else { $null }
+            outcomes = $outcomes
+            sizes_mb = [ordered]@{
+              bundle = if ($summary) { $summary.bundle_mb } else { $null }
+              portable_zip = if ($summary) { $summary.portable_mb } else { $null }
+              installer = if ($summary) { $summary.installer_mb } else { $null }
+            }
+            bundle_files = if ($summary) { $summary.bundle_files } else { $null }
+            tesseract_version = if ($summary) { $summary.tesseract_version } else { $null }
+            installer_language = if ($summary) { $summary.installer_language } else { $null }
+            warnings = if ($summary) { $summary.warnings } else { @() }
+            build_error = if ($summary) { $summary.error } else { $null }
+            selftest = Read-Json report/selftest.json
+            selftest_installed = Read-Json report/selftest-installed.json
+            smoke_stdout = Read-Json report/smoke.out.txt
+            timings_seconds = [ordered]@{
+              tools = Read-Seconds tools
+              build_total = Read-Seconds build
+              build_stages = if ($summary) { $summary.stages_seconds } else { $null }
+              selftest = Read-Seconds selftest
+              smoke = Read-Seconds smoke
+              install_cycle = Read-Seconds installer
+              job_so_far = if ($jobStart) { [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - $jobStart } else { $null }
+            }
+          }
+          $report | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 build-report.json
+          Get-Content build-report.json -Raw | Write-Host
+          # Log tail for the results branch (the full logs are in the Actions run).
+          $tail = @()
+          foreach ($f in "logs/build.log", "logs/install.log", "logs/uninstall.log") {
+            if (Test-Path $f) { $tail += "===== $f (last 80 lines) ====="; $tail += (Get-Content $f -Tail 80) }
+          }
+          if (Test-Path dist/size-report.txt) { $tail += "===== size-report.txt ====="; $tail += (Get-Content dist/size-report.txt) }
+          $tail | Set-Content -Encoding UTF8 log-tail.txt
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: matnyab-windows-${{ github.run_number }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            dist/MatnYab-Setup-*.exe
+            dist/MatnYab-*-portable.zip
+            dist/size-report.txt
+            build-report.json
+            log-tail.txt
+
+      - name: Publish report to the results branch
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          $remote = "https://x-access-token:$($env:GH_TOKEN)@github.com/$($env:REPO).git"
+          $pub = Join-Path $env:RUNNER_TEMP "results-pub"
+          if (Test-Path $pub) { Remove-Item -Recurse -Force $pub }
+          git ls-remote --exit-code --heads $remote results *> $null
+          if ($LASTEXITCODE -eq 0) {
+            git clone --quiet --depth 1 --branch results $remote $pub
+          } else {
+            git init --quiet $pub
+            git -C $pub checkout --quiet --orphan results
+            git -C $pub remote add origin $remote
+          }
+          if ($LASTEXITCODE -ne 0) { throw "could not prepare the results branch" }
+          git -C $pub config user.name "github-actions[bot]"
+          git -C $pub config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          $dest = Join-Path $pub "app/$($env:RUN_ID)"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          foreach ($f in "build-report.json", "log-tail.txt") {
+            if (Test-Path $f) { Copy-Item $f $dest }
+          }
+          git -C $pub add --all
+          git -C $pub commit --quiet -m "app build report: run $($env:RUN_ID)"
+          for ($i = 1; $i -le 5; $i++) {
+            git -C $pub push --quiet origin HEAD:results
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "push failed (attempt $i), rebasing"
+            git -C $pub pull --quiet --rebase origin results
+            Start-Sleep -Seconds (2 * $i)
+          }
+          if ($LASTEXITCODE -ne 0) { throw "could not push the report to the results branch" }
