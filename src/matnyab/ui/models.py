@@ -13,10 +13,11 @@ from PySide6.QtGui import QImage
 
 from matnyab.api import LOW_CONFIDENCE_THRESHOLD, Mode, OcrResult
 
-__all__ = ["ItemState", "QueueItem", "mean_confidence", "uncertain_level"]
+__all__ = ["ItemState", "QueueItem", "mean_confidence", "uncertain_level", "CONF_HIGH", "CONF_MID"]
 
 _ids = itertools.count(1)
 POOR_CONFIDENCE = 60.0
+CONF_HIGH, CONF_MID = 85.0, 75.0  # label bands for the mean word confidence (no % is shown)
 
 
 class ItemState(str, enum.Enum):
