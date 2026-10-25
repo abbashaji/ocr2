@@ -14,7 +14,7 @@ from typing import Optional
 from .scoring import base
 
 __all__ = [
-    "ALPHA", "TOKEN", "CFG", "LEX_CONFIG", "RAW_CONFIG", "load", "zipf", "candidates",
+    "ALPHA", "TOKEN", "CFG", "LEX_CONFIG", "RAW_CONFIG", "load", "zipf", "candidates", "fix_final_kaf",
     "is_known", "corr_word", "correct_tok",
 ]
 
@@ -135,6 +135,27 @@ def corr_word(
         if s > bs + margin:
             best, bs = c, s
     return best
+
+
+_ZWNJ_HAK = re.compile("(?<=\u200c)هاک(?![ء-يٱ-ۓ])")
+
+
+def fix_final_kaf(tok: str, known: float = 2.5, target: float = 3.0) -> str:
+    """Final ``ک`` read for final ``ی`` (e.g. ``کشورک`` -> ``کشوری``), whatever Tesseract's confidence.
+
+    Tesseract is confidently wrong on this pair, so the confidence gate of ``correct_tok`` lets it through.
+    A run is changed only when it is not a known word and its ``ی`` form is a common one. ``‌هاک`` after a
+    half-space is the plural suffix ``‌های``.
+    """
+    def sub(m: "re.Match[str]") -> str:
+        r = m.group(0)
+        if len(r) >= 3 and r.endswith("ک") and _ALPHA_ONLY.fullmatch(r):
+            alt = r[:-1] + "ی"
+            if zipf(r) < known and zipf(alt) >= target:
+                return alt
+        return r
+
+    return _ZWNJ_HAK.sub("های", TOKEN.sub(sub, tok))
 
 
 def correct_tok(

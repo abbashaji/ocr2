@@ -96,3 +96,16 @@ def test_lexicon_correct_tok_respects_conf_skip():
     assert lexicon.correct_tok("سلامم", 95, **lexicon.RAW_CONFIG) == "سلامم"  # conf_skip=0: untouched
     assert lexicon.correct_tok("ab", 10, **lexicon.LEX_CONFIG) == "ab"        # not Persian letters
     assert lexicon.correct_tok("سلامم", 95, **lexicon.LEX_CONFIG) == "سلامم"  # >= conf_skip 90
+
+
+def test_fix_final_kaf_repairs_unknown_words_whatever_the_confidence():
+    # Tesseract reads a final "ی" as "ک" with confidence >= 90, so correct_tok never sees these.
+    assert lexicon.fix_final_kaf("کشورک") == "کشوری"
+    assert lexicon.fix_final_kaf("جاک") == "جای"
+    assert lexicon.fix_final_kaf("ادارک") == "اداری"
+    assert lexicon.fix_final_kaf("تمدن\u200cهاک") == "تمدن\u200cهای"
+
+
+def test_fix_final_kaf_leaves_known_words_and_other_text_alone():
+    for word in ("کوچک", "پاک", "اندک", "مبارک", "ab", "هاک", "کشوری", "۱۲۳"):
+        assert lexicon.fix_final_kaf(word) == word

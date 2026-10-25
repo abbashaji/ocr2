@@ -251,16 +251,21 @@ class TesseractEngine:
             preload.join()
         cfg = lexicon.RAW_CONFIG if mode_used == "raw" else lexicon.LEX_CONFIG
         lines: list[LineResult] = []
-        for (toks, (sx, sy, top)), (crop, _) in zip(chosen, crops):
+        for k, ((toks, (sx, sy, top)), (crop, _)) in enumerate(zip(chosen, crops)):
             check()
             words = [
                 WordResult(
-                    restore_placeholders(lexicon.correct_tok(finalize_tok(t.text), t.conf, **cfg)),
+                    restore_placeholders(lexicon.fix_final_kaf(
+                        lexicon.correct_tok(finalize_tok(t.text), t.conf, **cfg))),
                     t.conf,
                     self._to_source(t.box, sx, sy, top, size),
                 )
                 for t in toks
             ]
+            if k == len(chosen) - 1 and words and words[-1].text.endswith("،"):
+                # A text cannot end with a comma; at low resolution Tesseract reads the final full stop as one.
+                tail = words[-1]  # not ``last``: that name belongs to the progress reporter above
+                words[-1] = WordResult(tail.text[:-1] + ".", tail.confidence, tail.box)
             band = (0, top, crop.width, top + crop.height)
             lines.append(self._line(words, band, size))
 
