@@ -91,6 +91,11 @@ all tests pass. `tests/e2e/conftest.py` clears the clipboard in `pytest_sessionf
 `tests/e2e` is part of the session. Running `pytest tests/ui` alone still exits 139; move the hook to
 `tests/conftest.py` to cover that.
 
+Confidence display: the UI never shows a percentage for confidence. "اطمینان" is Tesseract's own mean word
+score (a clean page averages ~89, and per-word scores barely predict correctness), which is a different
+metric from the word accuracy above. Showing both as percentages invites the wrong comparison, so only a
+label (بالا / متوسط / کم; bands in `models.CONF_HIGH/CONF_MID`) and the suspicious-word count are shown.
+
 ## 3. Build
 
 Windows installer, portable zip and bundle are built by `.github/workflows/build-windows.yml` on a
