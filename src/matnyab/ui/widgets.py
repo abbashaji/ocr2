@@ -49,7 +49,8 @@ def tool_button(
     btn = QToolButton(parent)
     btn.setCheckable(checkable)
     btn.setCursor(Qt.PointingHandCursor)
-    btn.setFocusPolicy(Qt.StrongFocus)
+    # TabFocus: the focus ring shows for keyboard users only, not after a mouse click.
+    btn.setFocusPolicy(Qt.TabFocus)
     btn.setAutoRaise(True)
     if icon_name:
         icons.apply(btn, icon_name, token)
@@ -69,6 +70,7 @@ def push_button(text: str, variant: Optional[str] = None, icon_name: Optional[st
                 token: Optional[str] = None, description: Optional[str] = None) -> QPushButton:
     btn = QPushButton(("\u2002" + text) if icon_name else text)
     btn.setCursor(Qt.PointingHandCursor)
+    btn.setFocusPolicy(Qt.TabFocus)
     if variant:
         btn.setProperty("variant", variant)
     if icon_name:
@@ -207,6 +209,7 @@ class SegmentedControl(QFrame):
             b.setText(label)
             b.setCheckable(True)
             b.setProperty("segment", True)
+            b.setFocusPolicy(Qt.TabFocus)
             b.setCursor(Qt.PointingHandCursor)
             b.setToolButtonStyle(Qt.ToolButtonTextOnly)
             b.setAccessibleName(label)
