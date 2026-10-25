@@ -14,8 +14,8 @@ from matnyab.api import OcrResult
 from matnyab.ui import icons, theme
 from matnyab.ui.cards import ErrorCard, ProcessingCard
 from matnyab.ui.editor import FindBar, ResultEditor
-from matnyab.ui.format import fa_digits, fa_percent, fa_seconds
-from matnyab.ui.models import mean_confidence
+from matnyab.ui.format import fa_digits, fa_seconds
+from matnyab.ui.models import CONF_HIGH, CONF_MID, mean_confidence
 from matnyab.ui.strings import S
 from matnyab.ui.widgets import Chip, push_button, tool_button
 
@@ -30,9 +30,12 @@ def mode_label(mode: str) -> str:
 
 def confidence_chip_spec(confidence: float) -> tuple[str, str, str]:
     """(label, chip kind, icon name): always text + icon, never colour only."""
-    if confidence >= 90:
+    # Tesseract's Persian word scores are compressed (a near-perfect page averages ~89), so the
+    # bands sit lower than the usual 90/80. Only a label is shown: a percentage invites comparison
+    # with word accuracy, which is a different metric (see docs/DEVELOPER.md).
+    if confidence >= CONF_HIGH:
         return S.conf_high, "success", "check_circle"
-    if confidence >= 80:
+    if confidence >= CONF_MID:
         return S.conf_mid, "accent", "info"
     if confidence >= 60:
         return S.conf_low, "warning", "warning"
@@ -244,7 +247,8 @@ class ResultPane(QWidget):
             return
         conf = mean_confidence(result) if confidence is None else confidence
         label, kind, icon_name = confidence_chip_spec(conf)
-        self.chip_conf.set(S.chip_confidence.format(label=label, pct=fa_percent(conf)), kind, icon_name)
+        self.chip_conf.set(S.chip_confidence.format(label=label), kind, icon_name)
+        self.chip_conf.setToolTip(S.conf_tip)
         self.chip_mode.set(S.chip_mode.format(mode=mode_label(result.mode_used)), "neutral", "wand")
         self.chip_time.set(S.chip_time.format(s=fa_seconds(result.elapsed_s)), "neutral", "history")
         for c in (self.chip_conf, self.chip_mode, self.chip_time):
@@ -252,7 +256,8 @@ class ResultPane(QWidget):
 
     def set_history_summary(self, mode: str, confidence: float) -> None:
         label, kind, icon_name = confidence_chip_spec(confidence)
-        self.chip_conf.set(S.chip_confidence.format(label=label, pct=fa_percent(confidence)), kind, icon_name)
+        self.chip_conf.set(S.chip_confidence.format(label=label), kind, icon_name)
+        self.chip_conf.setToolTip(S.conf_tip)
         self.chip_mode.set(S.chip_mode.format(mode=mode_label(mode)), "neutral", "wand")
         self.chip_conf.show()
         self.chip_mode.show()
