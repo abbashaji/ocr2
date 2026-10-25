@@ -81,6 +81,8 @@ class ResultEditor(QPlainTextEdit):
         self.setLayoutDirection(Qt.RightToLeft)
         opt = QTextOption()
         opt.setTextDirection(Qt.RightToLeft)
+        # Qt's default alignment is AlignLeft; RTL text must be flush right.
+        opt.setAlignment(Qt.AlignRight)
         opt.setWrapMode(QTextOption.WordWrap)
         self.document().setDefaultTextOption(opt)
         self.setPlaceholderText(S.editor_placeholder)
@@ -139,6 +141,7 @@ class ResultEditor(QPlainTextEdit):
         fmt = QTextBlockFormat()
         fmt.setLineHeight(150.0, QTextBlockFormat.ProportionalHeight.value)
         fmt.setLayoutDirection(Qt.RightToLeft)
+        fmt.setAlignment(Qt.AlignRight)
         cur.mergeBlockFormat(fmt)
         self.document().clearUndoRedoStacks()
         self.moveCursor(QTextCursor.Start)
