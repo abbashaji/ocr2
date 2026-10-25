@@ -14,10 +14,18 @@ from PySide6.QtWidgets import (
 from matnyab.ui import icons, theme
 from matnyab.ui.format import fa_digits, fa_percent
 from matnyab.ui.models import ItemState, QueueItem
+from matnyab.ui.result_pane import confidence_chip_spec
 from matnyab.ui.strings import S
 from matnyab.ui.widgets import Chip, IconLabel, ProgressRing, push_button, tool_button
 
-__all__ = ["QueuePanel", "QueueRow", "status_text"]
+__all__ = ["QueuePanel", "QueueRow", "status_text", "confidence_short_label"]
+
+
+def confidence_short_label(confidence: float) -> str:
+    """Short quality word for the narrow queue chip (never a percentage)."""
+    spec_label = confidence_chip_spec(confidence)[0]
+    return {S.conf_high: S.conf_high_short, S.conf_mid: S.conf_mid_short}.get(spec_label, S.conf_low_short)
+
 
 THUMB = 48
 ROW_H = 68
@@ -27,7 +35,7 @@ def status_text(item: QueueItem) -> str:
     if item.from_history:
         return S.st_history
     if item.state == ItemState.DONE:
-        return fa_percent(item.confidence)
+        return confidence_short_label(item.confidence)
     if item.state == ItemState.PROCESSING:
         return S.st_processing
     if item.state == ItemState.ERROR:
@@ -121,12 +129,13 @@ class QueueRow(QWidget):
         self.setMinimumHeight(ROW_H)
         st = item.state
         txt = status_text(item)
+        self.chip.setToolTip("")  # only the "done" chip explains what the confidence label means
         if item.from_history:
             self.chip.set(txt, "neutral", "history")
         elif st == ItemState.DONE:
-            kind = "success" if item.confidence >= 90 else ("accent" if item.confidence >= 80 else "warning")
-            icon = "check_circle" if kind == "success" else ("info" if kind == "accent" else "warning")
+            _, kind, icon = confidence_chip_spec(item.confidence)
             self.chip.set(txt, kind, icon)
+            self.chip.setToolTip(S.conf_tip)
         elif st == ItemState.ERROR:
             self.chip.set(txt, "error", "error")
         elif st == ItemState.PROCESSING:
