@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 
 from matnyab.api import HistoryItem
 from matnyab.ui import theme
-from matnyab.ui.format import fa_datetime, fa_percent
+from matnyab.ui.format import fa_datetime
 from matnyab.ui.result_pane import confidence_chip_spec
 from matnyab.ui.strings import S
 from matnyab.ui.widgets import Chip, push_button, tool_button
@@ -48,8 +48,9 @@ class HistoryRow(QWidget):
         fm = QFontMetrics(self.source.font())
         self.source.setText(fm.elidedText(item.source, Qt.ElideMiddle, 190))
         label, kind, icon = confidence_chip_spec(item.confidence)
-        self.chip = Chip(fa_percent(item.confidence), kind, icon)
-        self.chip.setAccessibleName(S.chip_confidence.format(label=label, pct=fa_percent(item.confidence)))
+        self.chip = Chip(label, kind, icon)
+        self.chip.setAccessibleName(S.chip_confidence.format(label=label))
+        self.chip.setToolTip(S.conf_tip)
         self.btn_open = tool_button("eye", S.history_open, size=18)
         self.btn_delete = tool_button("trash", S.history_delete, size=18)
         for b in (self.btn_open, self.btn_delete):
