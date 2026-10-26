@@ -74,7 +74,7 @@ export MATNYAB_DATA_DIR=$(mktemp -d)
 
 - `test_accuracy_gate.py` (marker `slow`): word accuracy of `samples/client_clean.png` >= 0.98 and of
   `samples/client_low.jpg` >= 0.93 in mode `auto`, after citation-marker stripping. The build fails if lower.
-  Current values: 99.1 % and 96.1 %.
+  Current values: 99.7 % and 97.6 %.
 - `test_speed_gate.py`: `client_clean.png` in <= 10 s on 2 CPUs (the process is pinned to 2 CPUs when
   more exist; on a single-CPU machine the limit is scaled by 2/CPUs because the work is CPU bound).
 - `test_ui_real.py`: real window + real engine + real stores: open, recognise, copy, save TXT and DOCX
@@ -95,6 +95,10 @@ Confidence display: the UI never shows a percentage for confidence. "اطمین�
 score (a clean page averages ~89, and per-word scores barely predict correctness), which is a different
 metric from the word accuracy above. Showing both as percentages invites the wrong comparison, so only a
 label (بالا / متوسط / کم; bands in `models.CONF_HIGH/CONF_MID`) and the suspicious-word count are shown.
+
+Numbers and punctuation: the accuracy gate compares letters and digits only; it ignores punctuation, the
+ezafe mark and decimal separators. Marker removal (`engine/markers.py`) judges a word with a square bracket
+as before; a word without one only loses clearly raised digits, so a plain number (`۳۱`, `۱٫۶۴`) survives.
 
 ## 3. Build
 
