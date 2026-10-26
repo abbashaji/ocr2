@@ -16,6 +16,10 @@ __all__ = ["Char", "HWord", "Token", "marker_flags", "clean_words_conf"]
 SUP_CHARS = frozenset("0123456789۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩[]()")
 PUNCT = frozenset(".,،:؛;!؟?")
 ZERO = frozenset("۰٠0")  # the Persian zero is a tiny dot: by size alone it looks like a superscript
+SQUARE = frozenset("[]")
+# A real marker sits ~0.6 line heights above the baseline; ordinary digits measure ~0.35 because the
+# median character bottom is pulled down by letters with descenders. Used for digits outside brackets.
+STRICT_UP = 0.5
 
 
 class Char(NamedTuple):
@@ -47,7 +51,11 @@ class Token(NamedTuple):
 def marker_flags(
     words: Sequence[Sequence[Char]], frac_h: float = 0.8, frac_up: float = 0.3
 ) -> list[list[bool]]:
-    """Parallel list of bool lists; True marks a marker character."""
+    """Parallel list of bool lists; True marks a marker character.
+
+    Tier 1: a word with a square bracket (``[۱۱]``) is judged as before. Tier 2: a word without one only loses
+    digits that are clearly raised (it used to lose ``۳۱`` and the leading ``۱`` of ``۱٫۶۴``).
+    """
     chars = [c for w in words for c in w]
     base = [c for c in chars if c.ch not in SUP_CHARS and c.ch not in PUNCT]
     if len(base) < 4:  # too little text to estimate the baseline
@@ -68,6 +76,10 @@ def marker_flags(
             )
             for c in w
         ]
+        if not any(c.ch in SQUARE for c in w):
+            # Without a square bracket a digit is a marker only when clearly raised. Ordinary numbers ("۳۱",
+            # "۱٫۶۴", "و۳۱") measure ~0.35 raised and stay; a detached superscript fragment measures ~0.6.
+            flag = [f and c.y1 <= bottom - STRICT_UP * height for f, c in zip(flag, w)]
         changed = True
         while changed:  # absorb brackets and zeros that touch a flagged run
             changed = False
