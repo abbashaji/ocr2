@@ -1,0 +1,365 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 164bc73..9376ae9 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -5,6 +5,13 @@ All notable changes to MatnYab. Versions follow `src/matnyab/__init__.py`.
+ ## Unreleased (project v004: QA and release hardening)
+ 
+ ### Fixed
++- Lexicon: `corr_word` no longer proposes a candidate shorter than the word. Deleting a letter turned
++  fragments such as `به‌تدر` into `به‌در`. On the real screenshots (legacy hypotheses, lexicon applied to
++  every token) word accuracy rises by 0.2-0.4 points at z100/z75 and 0.2-0.3 at z50; substitutions and
++  insertions are unchanged. (`به‌تدر` now becomes `به‌پدر`: still wrong, a split word box cannot be repaired
++  token by token.)
++- Scale choice: a reading with unbalanced `[`/`]` (last digit read as `]`) is skipped while another scale
++  read the line cleanly. `۹۲` on `client_clean.png` is now correct (numbers F1 0.67 -> 1.00).
+ - History drawer: the list showed a horizontal scrollbar and a corner box because the rows were
+   wider than the list viewport once the vertical scrollbar appeared. Rows now follow the viewport
+   width and horizontal scrolling is off (regression test `tests/e2e/test_ui_regressions.py`).
+@@ -13,6 +20,8 @@ All notable changes to MatnYab. Versions follow `src/matnyab/__init__.py`.
+   at session end (see `docs/DEVELOPER.md`, section 2, for the remaining limitation).
+ 
+ ### Added
++- Accuracy gate also checks numbers F1 and punctuation F1 (`engine/scoring.py`: `numbers`, `puncts`, `f1`,
++  `numbers_f1`, `punct_f1`); thresholds in `docs/DEVELOPER.md`.
+ - End-to-end tests with the real engine and UI (`tests/e2e`): accuracy gate (>= 98 % clean, >= 93 % low
+   quality), speed gate (<= 10 s on 2 CPUs), real-window test (copy, TXT, DOCX with `w:bidi`, history,
+   clean shutdown) and robustness tests (6000x4000 page, tiny images, non-image files, unwritable
+diff --git a/docs/DEVELOPER.md b/docs/DEVELOPER.md
+index 221d650..83dcce3 100644
+--- a/docs/DEVELOPER.md
++++ b/docs/DEVELOPER.md
+@@ -28,9 +28,12 @@ image  ->  engine (Tesseract pipeline)  ->  OcrResult  ->  UI (editor + image ov
+ 3. Every line is rendered at 7 heights (`TARGETS`) and each is sent to `tesseract --psm 7` (hOCR).
+    That is `lines x 7` independent subprocess calls (about 67 ms each), run in a thread pool of
+    `min(8, CPUs)` workers. This is why recognition time scales with the CPU count.
+-4. Per line, the *medoid* reading (smallest summed edit distance to the others) is kept.
++4. Per line, the *medoid* reading (smallest summed edit distance to the others) is kept. Scales whose
++   text has unbalanced square brackets (a digit read as `]`, e.g. `۹۲` -> `۹]`) are skipped while at
++   least one scale read the line without one (`_pick_scale`).
+ 5. Mode `auto` picks `lex` when at least 10 % of at least 20 words have confidence < 80, otherwise
+-   `raw`. `lex` corrects words with a Persian lexicon. Citation markers like `[12]` are removed
++   `raw`. `lex` corrects words with a Persian lexicon; it never shortens a word (a dropped letter was
++   wrong more often than right on real screenshots, see CHANGELOG). Citation markers like `[12]` are removed
+    unless `OcrOptions.keep_markers`.
+ 6. Progress is reported through the `progress(fraction, stage)` callback; cancelling a `CancelToken`
+    stops the run promptly (`Cancelled`).
+@@ -72,9 +75,20 @@ export MATNYAB_DATA_DIR=$(mktemp -d)
+ 
+ `tests/e2e` (the conftest removes `MATNYAB_ENGINE`, gives every test a fresh data folder):
+ 
+-- `test_accuracy_gate.py` (marker `slow`): word accuracy of `samples/client_clean.png` >= 0.98 and of
+-  `samples/client_low.jpg` >= 0.93 in mode `auto`, after citation-marker stripping. The build fails if lower.
+-  Current values: 99.7 % and 97.6 %.
++- `test_accuracy_gate.py` (marker `slow`): mode `auto`, after citation-marker stripping, three scores per
++  sample. The build fails if any is below its threshold:
++
++  | sample | word accuracy | numbers F1 | punctuation F1 |
++  |---|---|---|---|
++  | `client_clean.png` threshold | 0.98 | 0.95 | 0.98 |
++  | `client_clean.png` measured | 1.0000 | 1.0000 | 1.0000 |
++  | `client_low.jpg` threshold | 0.93 | 0.66 | 0.95 |
++  | `client_low.jpg` measured | 0.9762 | 0.6667 | 0.9583 |
++
++  Numbers F1 and punctuation F1 are `engine/scoring.numbers_f1` / `punct_f1` (`2*LCS/(len(ref)+len(hyp))`,
++  mirroring `ocr/ft/evaluate.py`). Numbers are compared with digits folded to ASCII and `٫ ٬` folded to
++  `. ,`, so a wrong separator (`۱٫۶۴` -> `۱،۶۴`), a lost digit or an extra number all cost. The low-quality
++  numbers F1 is 2/3 because of one known error (`۹۲` read as `۹۹۲`); a second damaged number fails the gate.
+ - `test_speed_gate.py`: `client_clean.png` in <= 10 s on 2 CPUs (the process is pinned to 2 CPUs when
+   more exist; on a single-CPU machine the limit is scaled by 2/CPUs because the work is CPU bound).
+ - `test_ui_real.py`: real window + real engine + real stores: open, recognise, copy, save TXT and DOCX
+@@ -96,8 +110,9 @@ score (a clean page averages ~89, and per-word scores barely predict correctness
+ metric from the word accuracy above. Showing both as percentages invites the wrong comparison, so only a
+ label (بالا / متوسط / کم; bands in `models.CONF_HIGH/CONF_MID`) and the suspicious-word count are shown.
+ 
+-Numbers and punctuation: the accuracy gate compares letters and digits only; it ignores punctuation, the
+-ezafe mark and decimal separators. Marker removal (`engine/markers.py`) judges a word with a square bracket
++Numbers and punctuation: the word accuracy compares letters and digits only; it ignores punctuation, the
++ezafe mark and decimal separators, which is why the gate also checks numbers F1 and punctuation F1 (the
++ezafe mark `ٔ` is still invisible to every metric: the model never outputs it). Marker removal (`engine/markers.py`) judges a word with a square bracket
+ as before; a word without one only loses clearly raised digits, so a plain number (`۳۱`, `۱٫۶۴`) survives.
+ 
+ ## 3. Build
+diff --git a/src/matnyab/engine/lexicon.py b/src/matnyab/engine/lexicon.py
+index db50042..05009f8 100644
+--- a/src/matnyab/engine/lexicon.py
++++ b/src/matnyab/engine/lexicon.py
+@@ -128,6 +128,11 @@ def corr_word(
+         return w
+     best, bs = w, zipf(w)
+     for c, cost in candidates(w, max_cost, sub_other, indel).items():
++        if len(c) < len(w):
++            # Never shorten a word: a dropped letter is almost always a fragment of a longer word
++            # (``به‌تدر`` -> ``به‌در`` instead of ``به‌تدریج``). Measured on the real screenshots this guard
++            # is neutral at z50 and gains 0.2-0.4 word-accuracy points at z100/z75.
++            continue
+         zc = zipf(c)
+         if zc < floor:
+             continue
+diff --git a/src/matnyab/engine/scoring.py b/src/matnyab/engine/scoring.py
+index d133622..264519b 100644
+--- a/src/matnyab/engine/scoring.py
++++ b/src/matnyab/engine/scoring.py
+@@ -5,15 +5,21 @@ from __future__ import annotations
+ import re
+ import unicodedata
+ 
+-from rapidfuzz.distance import Levenshtein as Lev
++from typing import Optional
+ 
+-__all__ = ["base", "letters", "words", "word_accuracy", "strip_markers"]
++from rapidfuzz.distance import LCSseq, Levenshtein as Lev
++
++__all__ = [
++    "base", "letters", "words", "word_accuracy", "strip_markers",
++    "numbers", "puncts", "f1", "numbers_f1", "punct_f1",
++]
+ 
+ _DIGITS_FROM = "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩"
+ _DIGITS_TO = "01234567890123456789"
+ _DIGIT_TABLE = str.maketrans(_DIGITS_FROM, _DIGITS_TO)
+ _BIDI_MARKS = re.compile("[\u200e\u200f]")
+ _CITATION = re.compile(r"\[[0-9۰-۹٠-٩]+\]")
++_NUM = re.compile(r"\d+(?:[.,٫٬،]\d+)*")
+ 
+ 
+ def base(s: str) -> str:
+@@ -50,3 +56,34 @@ def word_accuracy(ref: str, hyp: str) -> float:
+     """1 - word-level Levenshtein distance / number of reference words."""
+     wr, wh = words(ref), words(hyp)
+     return 1 - Lev.distance(wr, wh) / max(1, len(wr))
++
++
++def numbers(s: str) -> list[str]:
++    """Numbers as written, digits folded to ASCII.
++
++    ``٫`` and ``٬`` are folded to ``.`` and ``,`` so that only a WRONG separator (``۱٫۶۴`` read as ``۱،۶۴``
++    or ``،۶۴``) counts as a mismatch. Mirrors ``numbers()`` of ``ocr/ft/evaluate.py``.
++    """
++    return [m.replace("٫", ".").replace("٬", ",") for m in _NUM.findall(base(s))]
++
++
++def puncts(s: str) -> str:
++    """The sequence of punctuation marks (letters, digits and spaces dropped). Mirrors ``ocr/ft/evaluate.py``."""
++    return "".join(c for c in base(s) if unicodedata.category(c).startswith("P") or c in "٪٫٬")
++
++
++def f1(lcs: int, n_ref: int, n_hyp: int) -> Optional[float]:
++    """``2 * LCS / (len(ref) + len(hyp))`` in 0..1; ``None`` when both sides are empty."""
++    return 2 * lcs / (n_ref + n_hyp) if n_ref + n_hyp else None
++
++
++def numbers_f1(ref: str, hyp: str) -> Optional[float]:
++    """F1 of the number sequences (extra or missing numbers and wrong separators all cost)."""
++    r, h = numbers(ref), numbers(hyp)
++    return f1(LCSseq.similarity(r, h), len(r), len(h))
++
++
++def punct_f1(ref: str, hyp: str) -> Optional[float]:
++    """F1 of the punctuation-mark sequences (a ``،`` read as ``.`` or a lost mark costs)."""
++    r, h = puncts(ref), puncts(hyp)
++    return f1(LCSseq.similarity(r, h), len(r), len(h))
+diff --git a/src/matnyab/engine/tesseract_engine.py b/src/matnyab/engine/tesseract_engine.py
+index 3f835da..5fd3d9f 100644
+--- a/src/matnyab/engine/tesseract_engine.py
++++ b/src/matnyab/engine/tesseract_engine.py
+@@ -61,6 +61,26 @@ def choose_mode(confidences: Sequence[float]) -> ModeUsed:
+     return "lex" if low >= AUTO_LOW_FRACTION else "raw"
+ 
+ 
++def _unbalanced_brackets(text: str) -> bool:
++    """True when ``[`` and ``]`` do not pair up, e.g. a digit read as ``]`` (``۹۲`` -> ``۹]``).
++
++    Citation markers that survive (``[۱۲]``) are balanced, so they do not trigger this.
++    """
++    return text.count("[") != text.count("]")
++
++
++def _pick_scale(texts: Sequence[str]) -> int:
++    """Index of the scale to keep for one line: the medoid, preferring readings with balanced brackets.
++
++    A stray bracket is a misread glyph (the last digit of a number is often read as ``]``). When at least
++    one scale read the line without one, the medoid is taken among those scales only.
++    """
++    ok = [i for i, t in enumerate(texts) if not _unbalanced_brackets(t)]
++    if not ok or len(ok) == len(texts):
++        return _medoid(texts)
++    return ok[_medoid([texts[i] for i in ok])]
++
++
+ def _norm(s: str) -> str:
+     return " ".join(scoring.base(s).split())
+ 
+@@ -241,7 +261,7 @@ class TesseractEngine:
+         for row in grid:
+             units = [u for u in row if u is not None]
+             texts = [" ".join(t.text for t in toks) for toks, _ in units]
+-            chosen.append(units[_medoid(texts)])
++            chosen.append(units[_pick_scale(texts)])
+ 
+         confs = [t.conf for toks, _ in chosen for t in toks]
+         mode_used: ModeUsed = choose_mode(confs) if options.mode == "auto" else options.mode  # type: ignore[assignment]
+diff --git a/tests/e2e/test_accuracy_gate.py b/tests/e2e/test_accuracy_gate.py
+index 1e8cd8b..fa4884b 100644
+--- a/tests/e2e/test_accuracy_gate.py
++++ b/tests/e2e/test_accuracy_gate.py
+@@ -1,4 +1,9 @@
+-"""Accuracy gate: fails the build when word accuracy on the client samples drops."""
++"""Accuracy gate: fails the build when word accuracy, numbers F1 or punctuation F1 drop on the client samples.
++
++Word accuracy only sees letters and digits. Numbers F1 and punctuation F1 (``engine/scoring.py``) also see decimal
++and thousands separators (``۱٫۶۴``), lost or extra digits (``۹۲`` -> ``۹]``), commas read as full stops and so on.
++Thresholds sit just below the values measured with the shipped model (see docs/DEVELOPER.md, "Accuracy gate").
++"""
+ 
+ from __future__ import annotations
+ 
+@@ -9,22 +14,32 @@ from matnyab.engine import scoring
+ 
+ pytestmark = pytest.mark.slow
+ 
+-CLEAN_MIN = 0.98  # client ad: > 99% on clean full-size screenshots (measured 99.1%)
+-LOW_MIN = 0.93    # client ad: > 90% on low quality (measured 96.1%)
++# name: (word accuracy, numbers F1, punctuation F1) minimum
++CLEAN_MIN = (0.98, 0.95, 0.98)   # measured 1.0000 / 1.0000 / 1.0000 (client ad: > 99% on clean screenshots)
++LOW_MIN = (0.93, 0.66, 0.95)     # measured 0.9762 / 0.6667 / 0.9583 (client ad: > 90% on low quality)
++# The low-quality numbers F1 is 2/3 because of one known error (۹۲ read as ۹۹۲); a second lost or damaged
++# number (۳۱, ۱٫۶۴) drops it to 0.5 and fails the build.
+ 
+ 
+-def _accuracy(engine, image, ref_text) -> float:
++def _scores(engine, image, ref_text) -> tuple[float, float, float]:
+     res = engine.recognize(image, OcrOptions(mode="auto"))
+-    return scoring.word_accuracy(ref_text, scoring.strip_markers(res.text))
++    text = scoring.strip_markers(res.text)
++    return (
++        scoring.word_accuracy(ref_text, text),
++        scoring.numbers_f1(ref_text, text),
++        scoring.punct_f1(ref_text, text),
++    )
++
++
++def _check(label, got, minimum) -> None:
++    print(f"{label} word {got[0]:.4f} numbers F1 {got[1]:.4f} punctuation F1 {got[2]:.4f}")
++    for name, value, floor in zip(("word accuracy", "numbers F1", "punctuation F1"), got, minimum):
++        assert value >= floor, f"{label}: {name} {value:.4f} < {floor}"
+ 
+ 
+ def test_clean_screenshot_accuracy(engine, clean_path, ref_text):
+-    acc = _accuracy(engine, clean_path, ref_text)
+-    print(f"client_clean.png word accuracy: {acc:.4f}")
+-    assert acc >= CLEAN_MIN, f"clean accuracy {acc:.4f} < {CLEAN_MIN}"
++    _check("client_clean.png", _scores(engine, clean_path, ref_text), CLEAN_MIN)
+ 
+ 
+ def test_low_quality_photo_accuracy(engine, low_path, ref_text):
+-    acc = _accuracy(engine, low_path, ref_text)
+-    print(f"client_low.jpg word accuracy: {acc:.4f}")
+-    assert acc >= LOW_MIN, f"low-quality accuracy {acc:.4f} < {LOW_MIN}"
++    _check("client_low.jpg", _scores(engine, low_path, ref_text), LOW_MIN)
+diff --git a/tests/engine/golden/client_clean.raw.txt b/tests/engine/golden/client_clean.raw.txt
+index b01bb2b..31c4e47 100644
+--- a/tests/engine/golden/client_clean.raw.txt
++++ b/tests/engine/golden/client_clean.raw.txt
+@@ -1,7 +1,7 @@
+ ایران با نام رسمی جمهوری اسلامی ایران، کشوری در غرب آسیا است. این کشور از غرب با عراق، از
+ شمال غربی با ترکیه، جمهوری آذربایجان و ارمنستان، از شمال با دریای خزر، از شمال شرق با
+ ترکمنستان، از شرق با افغانستان، از جنوب شرقی با پاکستان و از جنوب با دریای عمان و خلیج
+-فارس هم‌مرز است. ایران با ۱٫۶۴ میلیون کیلومتر مربع گستره، هفدهمین کشور پهناور جهان، و با ۹]
++فارس هم‌مرز است. ایران با ۱٫۶۴ میلیون کیلومتر مربع گستره، هفدهمین کشور پهناور جهان، و با ۹۲
+ میلیون نفر جمعیت، هفدهمین کشور پرجمعیت جهان است. ایران در تقسیمات کشوری به پنج
+ منطقه و ۳۱ استان تقسیم می‌شود. زبان رسمی ایران فارسی است. پایتخت و پرجمعیت‌ترین شهر
+ این کشور تهران است.
+diff --git a/tests/engine/golden/client_low.lex.txt b/tests/engine/golden/client_low.lex.txt
+index 5581478..894b528 100644
+--- a/tests/engine/golden/client_low.lex.txt
++++ b/tests/engine/golden/client_low.lex.txt
+@@ -14,7 +14,7 @@
+ یکی از دوران‌های شکوفایی تاریخ تمدن ایران نظارت داشت، ایران باستان شاهد برخی از نخستین
+ پیشرفت‌های بشری در زمینه خطا، کشاورزی، شهرنشینی، دین و نظام‌های اداری بود. ایران که زمانی
+ یکی از مراکز اصلی آیین مزدیسنا به‌شمار می‌رفت، پس از فتح مسلمانان در سده هفتم میلادی
+-به‌در یج اسلامی شد. در دوران طلایی اسلام و موسوم به میان‌پرده ایرانی، نوآوری‌ها در ادبیات،
++به‌پدر یج اسلامی شد. در دوران طلایی اسلام و موسوم به میان‌پرده ایرانی، نوآوری‌ها در ادبیات،
+ فلسفه، ریاضیات، پزشکی، نجوم و هنر بار دیگر شکوفا شدند. در این دوره، دودمان‌های مسلمان
+ ایرانی به حاکمیت عرب‌ها پایان دادند و زبان فارسی را احیا کردند. پس از آن، از سده یازدهم تا
+ چهاردهم میلادی، ایران به‌ترتیب شاهد حکومت سلجوقیان و خوارزمشاهران، یورش‌ هاک مغول و
+diff --git a/tests/engine/test_helpers.py b/tests/engine/test_helpers.py
+index e6c6a49..950b857 100644
+--- a/tests/engine/test_helpers.py
++++ b/tests/engine/test_helpers.py
+@@ -2,9 +2,11 @@
+ 
+ from __future__ import annotations
+ 
++import pytest
++
+ from matnyab.engine import lexicon, scoring
+ from matnyab.engine.markers import Char, HWord, clean_words_conf, marker_flags
+-from matnyab.engine.tesseract_engine import choose_mode
++from matnyab.engine.tesseract_engine import _pick_scale, _unbalanced_brackets, choose_mode
+ from matnyab.engine.textfix import finalize_tok, restore_placeholders
+ 
+ 
+@@ -159,3 +161,62 @@ def test_restore_placeholders_drops_a_stray_stop_before_a_comma():
+ def test_finalize_tok_normalises_arabic_indic_digits_and_drops_bidi_marks():
+     assert finalize_tok("٩۲\u200f") == "۹۲"
+     assert finalize_tok("\u200eسلام") == "سلام"
++
++
++# ---- lexicon never shortens a word ---------------------------------------------------------------------------
++
++
++def test_lexicon_never_deletes_letters():
++    cfg = lexicon.LEX_CONFIG
++    # Fragment of "به‌تدریج" (the word box was split): the old rule dropped the "ت" -> "به‌در".
++    out = lexicon.correct_tok("به‌تدر", 50, **cfg)
++    assert len(out) >= len("به‌تدر") and out != "به‌در"
++    for frag in ("معالی", "مشاهد", "ستاید", "تشرع"):  # deletions the lexicon used to make (all wrong on real data)
++        assert len(lexicon.correct_tok(frag, 50, **cfg)) >= len(frag)
++
++
++def test_lexicon_still_substitutes_and_inserts():
++    cfg = lexicon.LEX_CONFIG
++    assert lexicon.correct_tok("حایز", 50, **cfg) == "جایز"            # substitution
++    assert lexicon.correct_tok("شهرنشین", 50, **cfg) == "شهرنشینی"     # insertion
++    assert lexicon.correct_tok("لاجورد", 50, **cfg) == "لاجوردی"
++
++
++# ---- scale selection avoids stray brackets ------------------------------------------------------------------
++
++
++def test_unbalanced_brackets():
++    assert _unbalanced_brackets("و با ۹]")
++    assert _unbalanced_brackets("و با ]۹")
++    assert not _unbalanced_brackets("و با ۹۲")
++    assert not _unbalanced_brackets("اصفهان[۲۴۶] و تهران")
++
++
++def test_pick_scale_prefers_balanced_reading():
++    texts = ["و با ۹]", "و با ۹]", "و با ۹]", "و با ۹۲", "و با ۹۲"]
++    assert _pick_scale(texts) in (3, 4)            # the plain medoid would be a "۹]" reading
++    assert _pick_scale(["و با ۹]", "و با ۹]"]) in (0, 1)   # no balanced reading: fall back to the medoid
++    assert _pick_scale(["الف ب", "الف ج", "الف ب"]) in (0, 2)  # no brackets at all: plain medoid
++
++
++# ---- numbers / punctuation scoring --------------------------------------------------------------------------
++
++
++def test_numbers_and_puncts():
++    assert scoring.numbers("۱٫۶۴ و ۳۱ و ۱٬۲۳۴") == ["1.64", "31", "1,234"]
++    assert scoring.puncts("سلام، دنیا. (۱٫۶)") == "،.(٫)"
++
++
++def test_numbers_f1_sees_wrong_separator_and_lost_digit():
++    ref = "مساحت ۱٫۶۴ میلیون و ۳۱ و ۹۲"
++    assert scoring.numbers_f1(ref, ref) == 1.0
++    assert scoring.numbers_f1(ref, ref.replace("۱٫۶۴", "۱،۶۴")) == pytest.approx(2 / 3)   # decimal mark misread
++    assert scoring.numbers_f1(ref, ref.replace("۹۲", "۹]")) == pytest.approx(2 / 3)
++    assert scoring.numbers_f1(ref, ref.replace(" و ۳۱", "")) == pytest.approx(0.8)         # a lost number
++    assert scoring.numbers_f1("بدون عدد", "هیچ") is None
++
++
++def test_punct_f1_sees_comma_for_full_stop():
++    assert scoring.punct_f1("الف، ب. ج.", "الف، ب. ج.") == 1.0
++    assert scoring.punct_f1("الف، ب. ج.", "الف، ب، ج.") == pytest.approx(2 * 2 / 6)
++    assert scoring.punct_f1("الف ب", "الف ب") is None

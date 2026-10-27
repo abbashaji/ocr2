@@ -61,6 +61,26 @@ def choose_mode(confidences: Sequence[float]) -> ModeUsed:
     return "lex" if low >= AUTO_LOW_FRACTION else "raw"
 
 
+def _unbalanced_brackets(text: str) -> bool:
+    """True when ``[`` and ``]`` do not pair up, e.g. a digit read as ``]`` (``۹۲`` -> ``۹]``).
+
+    Citation markers that survive (``[۱۲]``) are balanced, so they do not trigger this.
+    """
+    return text.count("[") != text.count("]")
+
+
+def _pick_scale(texts: Sequence[str]) -> int:
+    """Index of the scale to keep for one line: the medoid, preferring readings with balanced brackets.
+
+    A stray bracket is a misread glyph (the last digit of a number is often read as ``]``). When at least
+    one scale read the line without one, the medoid is taken among those scales only.
+    """
+    ok = [i for i, t in enumerate(texts) if not _unbalanced_brackets(t)]
+    if not ok or len(ok) == len(texts):
+        return _medoid(texts)
+    return ok[_medoid([texts[i] for i in ok])]
+
+
 def _norm(s: str) -> str:
     return " ".join(scoring.base(s).split())
 
@@ -241,7 +261,7 @@ class TesseractEngine:
         for row in grid:
             units = [u for u in row if u is not None]
             texts = [" ".join(t.text for t in toks) for toks, _ in units]
-            chosen.append(units[_medoid(texts)])
+            chosen.append(units[_pick_scale(texts)])
 
         confs = [t.conf for toks, _ in chosen for t in toks]
         mode_used: ModeUsed = choose_mode(confs) if options.mode == "auto" else options.mode  # type: ignore[assignment]

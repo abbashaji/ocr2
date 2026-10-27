@@ -28,9 +28,12 @@ image  ->  engine (Tesseract pipeline)  ->  OcrResult  ->  UI (editor + image ov
 3. Every line is rendered at 7 heights (`TARGETS`) and each is sent to `tesseract --psm 7` (hOCR).
    That is `lines x 7` independent subprocess calls (about 67 ms each), run in a thread pool of
    `min(8, CPUs)` workers. This is why recognition time scales with the CPU count.
-4. Per line, the *medoid* reading (smallest summed edit distance to the others) is kept.
+4. Per line, the *medoid* reading (smallest summed edit distance to the others) is kept. Scales whose
+   text has unbalanced square brackets (a digit read as `]`, e.g. `۹۲` -> `۹]`) are skipped while at
+   least one scale read the line without one (`_pick_scale`).
 5. Mode `auto` picks `lex` when at least 10 % of at least 20 words have confidence < 80, otherwise
-   `raw`. `lex` corrects words with a Persian lexicon. Citation markers like `[12]` are removed
+   `raw`. `lex` corrects words with a Persian lexicon; it never shortens a word (a dropped letter was
+   wrong more often than right on real screenshots, see CHANGELOG). Citation markers like `[12]` are removed
    unless `OcrOptions.keep_markers`.
 6. Progress is reported through the `progress(fraction, stage)` callback; cancelling a `CancelToken`
    stops the run promptly (`Cancelled`).
@@ -72,9 +75,20 @@ export MATNYAB_DATA_DIR=$(mktemp -d)
 
 `tests/e2e` (the conftest removes `MATNYAB_ENGINE`, gives every test a fresh data folder):
 
-- `test_accuracy_gate.py` (marker `slow`): word accuracy of `samples/client_clean.png` >= 0.98 and of
-  `samples/client_low.jpg` >= 0.93 in mode `auto`, after citation-marker stripping. The build fails if lower.
-  Current values: 99.7 % and 97.6 %.
+- `test_accuracy_gate.py` (marker `slow`): mode `auto`, after citation-marker stripping, three scores per
+  sample. The build fails if any is below its threshold:
+
+  | sample | word accuracy | numbers F1 | punctuation F1 |
+  |---|---|---|---|
+  | `client_clean.png` threshold | 0.98 | 0.95 | 0.98 |
+  | `client_clean.png` measured | 1.0000 | 1.0000 | 1.0000 |
+  | `client_low.jpg` threshold | 0.93 | 0.66 | 0.95 |
+  | `client_low.jpg` measured | 0.9762 | 0.6667 | 0.9583 |
+
+  Numbers F1 and punctuation F1 are `engine/scoring.numbers_f1` / `punct_f1` (`2*LCS/(len(ref)+len(hyp))`,
+  mirroring `ocr/ft/evaluate.py`). Numbers are compared with digits folded to ASCII and `٫ ٬` folded to
+  `. ,`, so a wrong separator (`۱٫۶۴` -> `۱،۶۴`), a lost digit or an extra number all cost. The low-quality
+  numbers F1 is 2/3 because of one known error (`۹۲` read as `۹۹۲`); a second damaged number fails the gate.
 - `test_speed_gate.py`: `client_clean.png` in <= 10 s on 2 CPUs (the process is pinned to 2 CPUs when
   more exist; on a single-CPU machine the limit is scaled by 2/CPUs because the work is CPU bound).
 - `test_ui_real.py`: real window + real engine + real stores: open, recognise, copy, save TXT and DOCX
@@ -96,8 +110,9 @@ score (a clean page averages ~89, and per-word scores barely predict correctness
 metric from the word accuracy above. Showing both as percentages invites the wrong comparison, so only a
 label (بالا / متوسط / کم; bands in `models.CONF_HIGH/CONF_MID`) and the suspicious-word count are shown.
 
-Numbers and punctuation: the accuracy gate compares letters and digits only; it ignores punctuation, the
-ezafe mark and decimal separators. Marker removal (`engine/markers.py`) judges a word with a square bracket
+Numbers and punctuation: the word accuracy compares letters and digits only; it ignores punctuation, the
+ezafe mark and decimal separators, which is why the gate also checks numbers F1 and punctuation F1 (the
+ezafe mark `ٔ` is still invisible to every metric: the model never outputs it). Marker removal (`engine/markers.py`) judges a word with a square bracket
 as before; a word without one only loses clearly raised digits, so a plain number (`۳۱`, `۱٫۶۴`) survives.
 
 ## 3. Build

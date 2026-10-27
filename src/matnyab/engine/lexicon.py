@@ -128,6 +128,11 @@ def corr_word(
         return w
     best, bs = w, zipf(w)
     for c, cost in candidates(w, max_cost, sub_other, indel).items():
+        if len(c) < len(w):
+            # Never shorten a word: a dropped letter is almost always a fragment of a longer word
+            # (``به‌تدر`` -> ``به‌در`` instead of ``به‌تدریج``). Measured on the real screenshots this guard
+            # is neutral at z50 and gains 0.2-0.4 word-accuracy points at z100/z75.
+            continue
         zc = zipf(c)
         if zc < floor:
             continue

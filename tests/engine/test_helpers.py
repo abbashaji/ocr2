@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from matnyab.engine import lexicon, scoring
 from matnyab.engine.markers import Char, HWord, clean_words_conf, marker_flags
-from matnyab.engine.tesseract_engine import choose_mode
+from matnyab.engine.tesseract_engine import _pick_scale, _unbalanced_brackets, choose_mode
 from matnyab.engine.textfix import finalize_tok, restore_placeholders
 
 
@@ -159,3 +161,62 @@ def test_restore_placeholders_drops_a_stray_stop_before_a_comma():
 def test_finalize_tok_normalises_arabic_indic_digits_and_drops_bidi_marks():
     assert finalize_tok("٩۲\u200f") == "۹۲"
     assert finalize_tok("\u200eسلام") == "سلام"
+
+
+# ---- lexicon never shortens a word ---------------------------------------------------------------------------
+
+
+def test_lexicon_never_deletes_letters():
+    cfg = lexicon.LEX_CONFIG
+    # Fragment of "به‌تدریج" (the word box was split): the old rule dropped the "ت" -> "به‌در".
+    out = lexicon.correct_tok("به‌تدر", 50, **cfg)
+    assert len(out) >= len("به‌تدر") and out != "به‌در"
+    for frag in ("معالی", "مشاهد", "ستاید", "تشرع"):  # deletions the lexicon used to make (all wrong on real data)
+        assert len(lexicon.correct_tok(frag, 50, **cfg)) >= len(frag)
+
+
+def test_lexicon_still_substitutes_and_inserts():
+    cfg = lexicon.LEX_CONFIG
+    assert lexicon.correct_tok("حایز", 50, **cfg) == "جایز"            # substitution
+    assert lexicon.correct_tok("شهرنشین", 50, **cfg) == "شهرنشینی"     # insertion
+    assert lexicon.correct_tok("لاجورد", 50, **cfg) == "لاجوردی"
+
+
+# ---- scale selection avoids stray brackets ------------------------------------------------------------------
+
+
+def test_unbalanced_brackets():
+    assert _unbalanced_brackets("و با ۹]")
+    assert _unbalanced_brackets("و با ]۹")
+    assert not _unbalanced_brackets("و با ۹۲")
+    assert not _unbalanced_brackets("اصفهان[۲۴۶] و تهران")
+
+
+def test_pick_scale_prefers_balanced_reading():
+    texts = ["و با ۹]", "و با ۹]", "و با ۹]", "و با ۹۲", "و با ۹۲"]
+    assert _pick_scale(texts) in (3, 4)            # the plain medoid would be a "۹]" reading
+    assert _pick_scale(["و با ۹]", "و با ۹]"]) in (0, 1)   # no balanced reading: fall back to the medoid
+    assert _pick_scale(["الف ب", "الف ج", "الف ب"]) in (0, 2)  # no brackets at all: plain medoid
+
+
+# ---- numbers / punctuation scoring --------------------------------------------------------------------------
+
+
+def test_numbers_and_puncts():
+    assert scoring.numbers("۱٫۶۴ و ۳۱ و ۱٬۲۳۴") == ["1.64", "31", "1,234"]
+    assert scoring.puncts("سلام، دنیا. (۱٫۶)") == "،.(٫)"
+
+
+def test_numbers_f1_sees_wrong_separator_and_lost_digit():
+    ref = "مساحت ۱٫۶۴ میلیون و ۳۱ و ۹۲"
+    assert scoring.numbers_f1(ref, ref) == 1.0
+    assert scoring.numbers_f1(ref, ref.replace("۱٫۶۴", "۱،۶۴")) == pytest.approx(2 / 3)   # decimal mark misread
+    assert scoring.numbers_f1(ref, ref.replace("۹۲", "۹]")) == pytest.approx(2 / 3)
+    assert scoring.numbers_f1(ref, ref.replace(" و ۳۱", "")) == pytest.approx(0.8)         # a lost number
+    assert scoring.numbers_f1("بدون عدد", "هیچ") is None
+
+
+def test_punct_f1_sees_comma_for_full_stop():
+    assert scoring.punct_f1("الف، ب. ج.", "الف، ب. ج.") == 1.0
+    assert scoring.punct_f1("الف، ب. ج.", "الف، ب، ج.") == pytest.approx(2 * 2 / 6)
+    assert scoring.punct_f1("الف ب", "الف ب") is None
